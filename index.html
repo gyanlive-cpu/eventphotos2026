@@ -47,8 +47,6 @@ small{opacity:.7}
 <button class="btn alt" id="pick">ગેલેરીમાંથી ફોટો · Choose from gallery</button>
 <p><small>સેલ્ફી તમારા ફોનમાં જ ચકાસાય છે, ક્યાંય સેવ થતી નથી. · Your selfie is matched on your phone and never uploaded or saved.</small></p>
 <div class="row"><img id="sf" alt="Your selfie"><span id="status" role="status"></span></div>
-<div class="row"><label for="tol">Match · મેળ:</label>
-<select id="tol"><option value=".47" selected>Exact match · ચોક્કસ મેળ</option><option value=".56">Approximate match · અંદાજિત મેળ</option></select></div>
 <div class="wait" id="wait"><i></i></div>
 <div id="out" class="grid"></div>
 <button class="btn alt" id="more" hidden>વધુ બતાવો · Show more</button>
@@ -62,7 +60,7 @@ small{opacity:.7}
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.js"></script>
 <script>
 const MODELS="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model/";
-const $=id=>document.getElementById(id);let DB,modelsReady,list=[],shown=0,desc=null;
+const $=id=>document.getElementById(id);const TOL=.45; /* lower = stricter exact match */let DB,modelsReady,list=[],shown=0,desc=null;
 const st=(t,busy)=>{$("status").className=busy?"busy":"";$("status").innerHTML=(busy?'<span class="spin"></span>':"")+t;$("wait").style.display=busy?"block":"none"};
 const L=()=>DB&&DB.local;const thumb=id=>L()?`thumbs/${id}`:`https://lh3.googleusercontent.com/d/${id}=w500`;const full=id=>L()?`photos/${id}`:`https://drive.google.com/file/d/${id}/view`;const dl=id=>L()?`photos/${id}`:`https://drive.google.com/uc?export=download&id=${id}`;
 fetch("index.json?v="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(d=>{DB=d;}).catch(()=>st("index.json મળ્યું નથી · index.json not found"));
@@ -81,11 +79,11 @@ const f=await detect(c);
 if(!f.length)return nf("ચહેરો દેખાયો નથી. સામે જોઈને ફરી પ્રયાસ કરો. · No face found. Face the camera and try again.");
 f.sort((a,b)=>b.detection.box.area-a.detection.box.area);desc=f[0].descriptor;match()}
 catch(e){console.error(e);nf("કંઈક ખોટું થયું. ફરી પ્રયાસ કરો. · Something went wrong. Try again.",e.message)}}
-function match(){if(!desc)return;const t=+$("tol").value,best={};
+function match(){if(!desc)return;const t=TOL,best={};
 for(const f of DB.faces){const d=dist(desc,f.d);if(d<t&&(best[f.p]===undefined||d<best[f.p]))best[f.p]=d}
 list=Object.keys(best).sort((a,b)=>best[a]-best[b]).map(i=>DB.photos[i]);
 $("out").innerHTML="";shown=0;
-st(list.length?`કુલ ${DB.photos.length} ફોટામાંથી ${list.length} ફોટા મળ્યા · ${list.length} photos found out of ${DB.photos.length}`:"કોઈ ફોટા મળ્યા નથી. 'અંદાજિત મેળ' પસંદ કરો અથવા અલગ ખૂણાથી નવી સેલ્ફી અપલોડ કરો. · No photos found. Try 'Approximate match' or upload a new selfie taken from a different angle.");more()}
+st(list.length?`કુલ ${DB.photos.length} ફોટામાંથી ${list.length} ફોટા મળ્યા · ${list.length} photos found out of ${DB.photos.length}`:"કોઈ ફોટા મળ્યા નથી. અલગ ખૂણાથી નવી સેલ્ફી લો અથવા સ્પષ્ટ, સામેથી લીધેલો ફોટો અપલોડ કરો. · No photos found. Please take a new selfie from a different angle, or upload a clear, front-facing photo.");more()}
 function more(){const n=list.slice(shown,shown+30);shown+=n.length;
 for(const id of n){const d=document.createElement("div");d.className="card";
 d.innerHTML=`<a href="${full(id)}" target="_blank" rel="noopener"><img loading="lazy" src="${thumb(id)}" alt="Event photo"></a><a class="dl" href="${dl(id)}" download>⬇</a>`;$("out").appendChild(d)}
@@ -116,5 +114,5 @@ if(Date.now()-t0>7000)$("snap").hidden=false;await sleep(150)}}
 $("take").onclick=openCam;$("snap").onclick=snap;$("cclose").onclick=closeCam;
 $("pick").onclick=()=>{$("file").removeAttribute("capture");$("file").click()};
 $("file").onchange=e=>e.target.files[0]&&run(e.target.files[0]);
-$("tol").onchange=match;$("more").onclick=more;
+$("more").onclick=more;
 </script></body></html>
