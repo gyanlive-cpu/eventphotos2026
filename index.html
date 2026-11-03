@@ -23,6 +23,13 @@ h1{font-size:1.7rem;line-height:1.2;margin:0 0 6px}p{margin:.3em 0}.sub{opacity:
 .card a.dl{position:absolute;right:6px;bottom:6px;background:var(--ink);color:var(--paper);padding:3px 10px;border-radius:14px;font-size:.8rem;text-decoration:none}
 .top{display:flex;gap:14px;align-items:center;justify-content:space-between;margin-bottom:6px}.tag{font-weight:600;color:var(--teal);margin:4px 0 0}.logo{width:78px;height:78px;flex:none;border-radius:14px;background:#fff;object-fit:contain;box-shadow:0 1px 6px #0003}
 small{opacity:.7}
+.cam{position:fixed;inset:0;z-index:50;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px}
+.cam .msg{color:#fff;font-weight:700;text-align:center;min-height:3.4em;font-size:1.05rem;max-width:520px}
+.cam small{color:#d6dde0;text-align:center;opacity:1}.cbtns{width:min(92vw,360px)}
+.stage{position:relative;aspect-ratio:3/4;width:min(94vw,calc((100vh - 200px)*.75));overflow:hidden;border-radius:14px;background:#111}
+.stage video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.oval{position:absolute;left:50%;top:47%;width:66%;height:62%;transform:translate(-50%,-50%);border:4px solid #fff;border-radius:50%;box-shadow:0 0 0 999px rgba(0,0,0,.55);transition:border-color .2s}
+.oval.warn{border-color:var(--gold)}.oval.ok{border-color:#2ecc71}
 .spin{display:block;width:72px;height:72px;margin:0 auto 14px;border:7px solid var(--line);border-top-color:var(--gold);border-radius:50%;animation:sp .9s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 .wait{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin:6px 0 0;display:none}
@@ -47,6 +54,12 @@ small{opacity:.7}
 <div id="out" class="grid"></div>
 <button class="btn alt" id="more" hidden>વધુ બતાવો · Show more</button>
 </main>
+<div class="cam" id="cam" hidden>
+<div class="msg" id="cmsg"></div>
+<div class="stage"><video id="vid" playsinline muted autoplay></video><div class="oval" id="oval"></div></div>
+<small>☀ સારો પ્રકાશ · Good light &nbsp;·&nbsp; 😐 સીધો ચહેરો · Face straight &nbsp;·&nbsp; 🧢 ટોપી/માસ્ક દૂર · No cap or mask</small>
+<div class="cbtns"><button class="btn" id="snap" hidden>📸 ફોટો લો · Capture now</button><button class="btn alt" id="cclose">રદ કરો · Cancel</button></div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.js"></script>
 <script>
 const MODELS="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model/";
@@ -60,9 +73,9 @@ function toCanvas(file){return new Promise((ok,no)=>{const u=URL.createObjectURL
 const dist=(a,b)=>{let s=0;for(let i=0;i<128;i++){const d=a[i]-b[i];s+=d*d}return Math.sqrt(s)};
 async function detect(c){const go=q=>faceapi.detectAllFaces(c,new faceapi.SsdMobilenetv1Options({minConfidence:q})).withFaceLandmarks().withFaceDescriptors();
 let f=await go(.5);
-if(!f.length&&faceapi.tf.getBackend()!=="cpu"){try{await faceapi.tf.setBackend("cpu");await faceapi.tf.ready();await Promise.all([faceapi.nets.ssdMobilenetv1.loadFromUri(MODELS),faceapi.nets.faceLandmark68Net.loadFromUri(MODELS),faceapi.nets.faceRecognitionNet.loadFromUri(MODELS)]);f=await go(.5)}catch(e){console.error(e)}}
+if(!f.length&&faceapi.tf.getBackend()!=="cpu"){try{await faceapi.tf.setBackend("cpu");await faceapi.tf.ready();window.liveReady=false;await Promise.all([faceapi.nets.ssdMobilenetv1.loadFromUri(MODELS),faceapi.nets.faceLandmark68Net.loadFromUri(MODELS),faceapi.nets.faceRecognitionNet.loadFromUri(MODELS)]);f=await go(.5)}catch(e){console.error(e)}}
 if(!f.length)f=await go(.3);window.dbg=faceapi.tf.getBackend()+" "+c.width+"x"+c.height;return f}
-const nf=(m,x)=>{st(m);$("status").insertAdjacentHTML("beforeend","<br><small>v4 · "+(x||window.dbg)+"</small>")};
+const nf=(m,x)=>{st(m);$("status").insertAdjacentHTML("beforeend","<br><small>v5 · "+(x||window.dbg)+"</small>")};
 async function run(file){if(!DB)return st("થોડી રાહ જુઓ · Please wait…");
 try{await loadModels();const c=await toCanvas(file);st("કૃપા કરીને રાહ જુઓ, અમે તમારા ફોટા શોધી રહ્યા છીએ… · Please wait while we search for your photos…",1);
 const f=await detect(c);
@@ -78,7 +91,30 @@ function more(){const n=list.slice(shown,shown+30);shown+=n.length;
 for(const id of n){const d=document.createElement("div");d.className="card";
 d.innerHTML=`<a href="${full(id)}" target="_blank" rel="noopener"><img loading="lazy" src="${thumb(id)}" alt="Event photo"></a><a class="dl" href="${dl(id)}" download>⬇</a>`;$("out").appendChild(d)}
 $("more").hidden=shown>=list.length}
-$("take").onclick=()=>{$("file").setAttribute("capture","user");$("file").click()};
+let stream,camOn=false,good=0,t0=0;const V=$("vid"),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const say=(t,c)=>{$("cmsg").innerHTML=t;$("oval").className="oval "+(c||"")};
+const fallback=()=>{$("file").setAttribute("capture","user");$("file").click()};
+async function openCam(){if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return fallback();
+try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:1280},height:{ideal:960}},audio:false})}catch(e){return fallback()}
+V.srcObject=stream;await V.play().catch(()=>{});$("cam").hidden=false;$("snap").hidden=true;camOn=true;good=0;t0=Date.now();
+say("કૅમેરા તૈયાર થઈ રહ્યો છે…<br>Getting the camera ready…");loadModels().catch(()=>{});
+try{if(!window.liveReady){await Promise.all([faceapi.nets.tinyFaceDetector.loadFromUri(MODELS),faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODELS)]);window.liveReady=true}}catch(e){}
+loop()}
+function closeCam(){camOn=false;$("cam").hidden=true;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}V.srcObject=null}
+function snap(){const w=V.videoWidth,h=V.videoHeight,k=Math.min(1,900/Math.max(w,h)),c=document.createElement("canvas");c.width=w*k;c.height=h*k;c.getContext("2d").drawImage(V,0,0,c.width,c.height);closeCam();c.toBlob(b=>run(b),"image/jpeg",.92)}
+async function loop(){while(camOn){try{if(V.videoWidth&&window.liveReady){const w=V.videoWidth,h=V.videoHeight,a=.75,v=w/h,vw=v>a?h*a:w,vh=v>a?h:w/a;
+const c=document.createElement("canvas");c.width=c.height=32;const x=c.getContext("2d");x.drawImage(V,0,0,32,32);const p=x.getImageData(0,0,32,32).data;let L=0;for(let i=0;i<p.length;i+=4)L+=.3*p[i]+.59*p[i+1]+.11*p[i+2];L/=1024;
+const d=await faceapi.detectSingleFace(V,new faceapi.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:.5})).withFaceLandmarks(true);let m,k="warn";
+if(L<55)m="વધુ પ્રકાશ જોઈએ<br>Please move to a brighter place";
+else if(!d)m="ચહેરો ગોળ ફ્રેમમાં રાખો<br>Place your face inside the oval";
+else{const b=d.detection.box,bw=b.width/vw,cx=(b.x+b.width/2-w/2)/vw,cy=(b.y+b.height/2-h/2)/vh,P=d.landmarks.positions,r=(P[30].x-P[0].x)/(P[16].x-P[0].x);
+if(bw<.42)m="થોડા નજીક આવો<br>Move a little closer";else if(bw>.68)m="થોડા દૂર જાઓ<br>Move back a little";
+else if(Math.abs(cx)>.1||Math.abs(cy+.03)>.12)m="ચહેરો વચ્ચે લાવો<br>Centre your face in the oval";
+else if(r<.4||r>.6)m="સીધું કેમેરા તરફ જુઓ<br>Look straight at the camera";
+else{m="બરાબર! સ્થિર રહો<br>Perfect, hold still";k="ok"}}
+good=k==="ok"?good+1:0;say(m,k);if(good>=4)return snap()}}catch(e){console.error(e)}
+if(Date.now()-t0>7000)$("snap").hidden=false;await sleep(150)}}
+$("take").onclick=openCam;$("snap").onclick=snap;$("cclose").onclick=closeCam;
 $("pick").onclick=()=>{$("file").removeAttribute("capture");$("file").click()};
 $("file").onchange=e=>e.target.files[0]&&run(e.target.files[0]);
 $("tol").onchange=match;$("more").onclick=more;
