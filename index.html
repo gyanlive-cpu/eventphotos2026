@@ -53,7 +53,7 @@ const MODELS="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model/";
 const $=id=>document.getElementById(id);let DB,modelsReady,list=[],shown=0,desc=null;
 const st=(t,busy)=>{$("status").className=busy?"busy":"";$("status").innerHTML=(busy?'<span class="spin"></span>':"")+t;$("wait").style.display=busy?"block":"none"};
 const L=()=>DB&&DB.local;const thumb=id=>L()?`thumbs/${id}`:`https://lh3.googleusercontent.com/d/${id}=w500`;const full=id=>L()?`photos/${id}`:`https://drive.google.com/file/d/${id}/view`;const dl=id=>L()?`photos/${id}`:`https://drive.google.com/uc?export=download&id=${id}`;
-fetch("index.json").then(r=>r.json()).then(d=>{DB=d;}).catch(()=>st("index.json મળ્યું નથી · index.json not found"));
+fetch("index.json?v="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(d=>{DB=d;}).catch(()=>st("index.json મળ્યું નથી · index.json not found"));
 async function loadModels(){if(modelsReady)return;st("કૃપા કરીને રાહ જુઓ, અમે તમારા ફોટા શોધી રહ્યા છીએ… · Please wait while we search for your photos…",1);
 await Promise.all([faceapi.nets.ssdMobilenetv1.loadFromUri(MODELS),faceapi.nets.faceLandmark68Net.loadFromUri(MODELS),faceapi.nets.faceRecognitionNet.loadFromUri(MODELS)]);modelsReady=true}
 function toCanvas(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),i=new Image();i.onload=()=>{const s=Math.min(1,900/Math.max(i.width,i.height)),c=document.createElement("canvas");c.width=i.width*s;c.height=i.height*s;c.getContext("2d").drawImage(i,0,0,c.width,c.height);$("sf").src=u;$("sf").style.display="block";ok(c)};i.onerror=no;i.src=u})}
