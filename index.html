@@ -85,7 +85,7 @@ function match(){if(!desc)return;const t=+$("tol").value,best={};
 for(const f of DB.faces){const d=dist(desc,f.d);if(d<t&&(best[f.p]===undefined||d<best[f.p]))best[f.p]=d}
 list=Object.keys(best).sort((a,b)=>best[a]-best[b]).map(i=>DB.photos[i]);
 $("out").innerHTML="";shown=0;
-st(list.length?`${list.length} ફોટા મળ્યા · ${list.length} photos found`:"કોઈ ફોટા મળ્યા નથી. 'અંદાજિત મેળ' પસંદ કરો અથવા અલગ ખૂણાથી નવી સેલ્ફી અપલોડ કરો. · No photos found. Try 'Approximate match' or upload a new selfie taken from a different angle.");more()}
+st(list.length?`કુલ ${DB.photos.length} ફોટામાંથી ${list.length} ફોટા મળ્યા · ${list.length} photos found out of ${DB.photos.length}`:"કોઈ ફોટા મળ્યા નથી. 'અંદાજિત મેળ' પસંદ કરો અથવા અલગ ખૂણાથી નવી સેલ્ફી અપલોડ કરો. · No photos found. Try 'Approximate match' or upload a new selfie taken from a different angle.");more()}
 function more(){const n=list.slice(shown,shown+30);shown+=n.length;
 for(const id of n){const d=document.createElement("div");d.className="card";
 d.innerHTML=`<a href="${full(id)}" target="_blank" rel="noopener"><img loading="lazy" src="${thumb(id)}" alt="Event photo"></a><a class="dl" href="${dl(id)}" download>⬇</a>`;$("out").appendChild(d)}
