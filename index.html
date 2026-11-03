@@ -59,9 +59,10 @@ await Promise.all([faceapi.nets.ssdMobilenetv1.loadFromUri(MODELS),faceapi.nets.
 function toCanvas(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),i=new Image();i.onload=()=>{const s=Math.min(1,900/Math.max(i.width,i.height)),c=document.createElement("canvas");c.width=i.width*s;c.height=i.height*s;c.getContext("2d").drawImage(i,0,0,c.width,c.height);$("sf").src=u;$("sf").style.display="block";ok(c)};i.onerror=no;i.src=u})}
 const dist=(a,b)=>{let s=0;for(let i=0;i<128;i++){const d=a[i]-b[i];s+=d*d}return Math.sqrt(s)};
 async function detect(c){const go=q=>faceapi.detectAllFaces(c,new faceapi.SsdMobilenetv1Options({minConfidence:q})).withFaceLandmarks().withFaceDescriptors();
-let f=await go(.5);if(!f.length)f=await go(.3);
-if(!f.length){try{await faceapi.tf.setBackend("cpu");await faceapi.tf.ready();f=await go(.3)}catch(e){}}window.dbg=faceapi.tf.getBackend()+" "+c.width+"x"+c.height;return f}
-const nf=(m,x)=>{st(m);$("status").insertAdjacentHTML("beforeend","<br><small>v3 · "+(x||window.dbg)+"</small>")};
+let f=await go(.5);
+if(!f.length&&faceapi.tf.getBackend()!=="cpu"){try{await faceapi.tf.setBackend("cpu");await faceapi.tf.ready();await Promise.all([faceapi.nets.ssdMobilenetv1.loadFromUri(MODELS),faceapi.nets.faceLandmark68Net.loadFromUri(MODELS),faceapi.nets.faceRecognitionNet.loadFromUri(MODELS)]);f=await go(.5)}catch(e){console.error(e)}}
+if(!f.length)f=await go(.3);window.dbg=faceapi.tf.getBackend()+" "+c.width+"x"+c.height;return f}
+const nf=(m,x)=>{st(m);$("status").insertAdjacentHTML("beforeend","<br><small>v4 · "+(x||window.dbg)+"</small>")};
 async function run(file){if(!DB)return st("થોડી રાહ જુઓ · Please wait…");
 try{await loadModels();const c=await toCanvas(file);st("કૃપા કરીને રાહ જુઓ, અમે તમારા ફોટા શોધી રહ્યા છીએ… · Please wait while we search for your photos…",1);
 const f=await detect(c);
